@@ -37,8 +37,8 @@
 </template>
 
 <script>
-import { expectation } from "./utils/promise";
 import difficulty from "./utils/difficulty";
+import { conditionToContinue, expectation } from "./utils/helpers";
 
 export default {
     name: "App",
@@ -70,7 +70,7 @@ export default {
             const { reset, addNewRound, playFields } = this;
             reset();
             addNewRound();
-            playFields();
+            await playFields();
             this.disabled = false;
         },
         pickDiff({ time }) {
@@ -96,12 +96,14 @@ export default {
 
             this.clicked.push(id);
             playSound(id);
+            
+
+            if (!conditionToContinue(this.rounds, this.clicked)) {
+                endGame();
+                return;
+            }
 
             if (this.clicked.length == this.rounds.length) {
-                if (this.clicked.join("") !== this.rounds.join("")) {
-                    endGame();
-                    return;
-                }
                 this.round++;
                 this.disabled = true;
 
