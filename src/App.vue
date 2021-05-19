@@ -8,15 +8,14 @@
         </div>
         <div class="field" :class="{ 'field-disabled': disabled }">
             <div
-                :class="[
-                    i == currentField ? 'field__item-active' : '',
-                    'field__item',
-                    `field__item-${i}`,
-                ]"
-                :ref="`field_${i}`"
-                @click="clickHandler(i)"
                 v-for="i in 4"
                 :key="i"
+                class="field__item"
+                :class="[
+                    i == currentField ? 'field__item-active' : '',
+                    `field__item-${i}`,
+                ]"
+                @click="clickHandler(i)"
             ></div>
         </div>
         <div class="info">
@@ -37,11 +36,12 @@
 </template>
 
 <script>
-import difficulty from "./utils/difficulty";
-import { conditionToContinue, expectation } from "./utils/helpers";
+import difficulty from './utils/difficulty'
+import { conditionToContinue, expectation, random } from './utils/helpers'
+import Interval from './utils/interval'
 
 export default {
-    name: "App",
+    name: 'App',
     data() {
         return {
             round: 0,
@@ -52,37 +52,41 @@ export default {
             showEndGame: false,
             currentDiffTimer: 1500,
             difficulty,
-        };
+            interval: null,
+        }
+    },
+    beforeMount() {
+        this.interval = new Interval()
     },
     methods: {
         reset() {
-            this.round = 0;
-            this.currentField = 0;
-            this.rounds = [];
-            this.resetClicked();
-            this.disabled = true;
-            this.showEndGame = false;
+            this.round = 0
+            this.currentField = 0
+            this.rounds = []
+            this.resetClicked()
+            this.disabled = true
+            this.showEndGame = false
+            this.interval.stop()
         },
         resetClicked() {
-            this.clicked = [];
+            this.clicked = []
         },
         async start() {
-            const { reset, addNewRound, playFields } = this;
-            reset();
-            addNewRound();
-            await playFields();
-            this.disabled = false;
+            const { reset, addNewRound, playFields } = this
+            reset()
+            addNewRound()
+            playFields()
         },
         pickDiff({ time }) {
-            this.reset();
-            this.currentDiffTimer = time;
+            this.reset()
+            this.currentDiffTimer = time
         },
         endGame() {
-            this.showEndGame = true;
-            this.disabled = true;
+            this.showEndGame = true
+            this.disabled = true
         },
         addNewRound() {
-            this.rounds.push(this.randomNum());
+            this.rounds.push(random(1, 4))
         },
         async clickHandler(id) {
             const {
@@ -90,58 +94,52 @@ export default {
                 playFields,
                 resetClicked,
                 addNewRound,
-                currentDiffTimer,
                 endGame,
-            } = this;
+            } = this
 
-            this.clicked.push(id);
-            playSound(id);
-            
+            this.clicked.push(id)
+            playSound(id)
 
             if (!conditionToContinue(this.rounds, this.clicked)) {
-                endGame();
-                return;
+                endGame()
+                return
             }
 
             if (this.clicked.length == this.rounds.length) {
-                this.round++;
-                this.disabled = true;
-
-                await expectation(currentDiffTimer);
-                addNewRound();
-                resetClicked();
-                await playFields();
-
-                this.disabled = false;
+                this.round++
+                addNewRound()
+                resetClicked()
+                playFields()
             }
         },
         async playFields() {
-            const { rounds, playSound, playField } = this;
+            const { rounds, playSound, activeField } = this
+            this.disabled = true
+            this.interval.start(this.currentDiffTimer, (s) => {
+                const round = rounds[s]
 
-            for (const a of rounds) {
-                playSound(a);
-                this.currentField = a;
-                await playField(a);
-                this.currentField = 0;
-            }
-        },
-        randomNum() {
-            return Math.floor(1 + Math.random() * (4 - 1));
+                if (!round) {
+                    this.interval.stop()
+                    this.disabled = false
+                    return
+                }
+                playSound(round)
+                activeField(round)
+            })
         },
         playSound(id) {
-            const el = this.$refs[`sound_${id}`];
-            el.pause();
-            el.currentTime = 0;
-            el.play();
+            const el = this.$refs[`sound_${id}`]
+            el.pause()
+            el.currentTime = 0
+            el.play()
         },
-        async playField(id) {
-            const { classList } = this.$refs[`sound_${id}`];
-            classList.add("active");
-            await expectation(this.currentDiffTimer);
-            classList.remove("active");
+        async activeField(id) {
+            this.currentField = id
+            await expectation(this.currentDiffTimer - 10)
+            this.currentField = 0
         },
     },
-};
+}
 </script>
 
 <style lang="scss" scoped>
@@ -183,7 +181,7 @@ export default {
     position: relative;
     &-disabled {
         &:after {
-            content: "";
+            content: '';
             position: absolute;
             top: 0px;
             right: 0px;
